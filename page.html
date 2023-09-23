@@ -1,0 +1,138 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"><Paste>
+  <title>test gallery page</title>
+<style>
+:root {
+	--radius: 4px; /* a small unit, also used for border radius. should be unit of basis for spacings and other cales *2, *4, *8, *16, etc. because i heard that's good aesthetic design */
+	--img-size: 128px;
+}
+html, body, div, img { 
+	padding: 0;
+	margin: 0;
+	border: 1px solid red;
+}
+/*
+8px margin around children
+ ┌───────────────────┐
+ │ . . . . .         │
+ │ . ┌───┐ . ┌───┐   │
+ │ . │   │ . │   │   │
+ │ . └───┘ . └───┘   │
+ │ . . . . .         │
+ │                   │
+ └───────────────────┘
+                   
+and 8x padding in parent
+ ┌───────────────────┐
+ │ . . . . . . . . . │
+ │ . ┌───┐   ┌───┐ . │
+ │ . │   │   │   │ . │
+ │ . └───┘   └───┘ . │
+ │ .               . │
+ │ . . . . . . . . . │
+ └───────────────────┘
+
+means 16px uniform gutters everywhere
+*/
+
+.gallery-container {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+.gallery {
+	display: flex;
+	flex-wrap: wrap;
+	/* justify-content: space-between; */
+	padding: var(--radius);
+}
+.gallery > * {
+	margin: var(--radius);
+}
+
+.gallery.single-row {
+	flex-wrap: nowrap;
+	overflow: auto;
+}
+
+/* if img text is absolute position overlayed, 
+	 then parent img container has to be position relative */
+.img-container {
+	position: relative;
+	aspect-ratio: 1.0;
+	border: 1px solid black;
+	display: flex;
+	cursor: pointer;
+	border-radius: var(--radius);
+}
+
+.img-container p {
+	margin: 0;
+	padding: 0;
+	position: absolute;
+	bottom: 0;
+	width: calc(100% - 2*var(--radius));
+	border: var(--radius) solid rgba(0,0,0,0.0); /* ends up matching background color */
+	background-color: rgba(255,255,255,0.5); /* for some higher contrast in case img background isnt friendly */
+	border-radius: 0 0 var(--radius) var(--radius);
+
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+img {
+	width: var(--img-size);
+	border-radius: var(--radius);
+}
+
+.add-img-btn {
+	width: var(--img-size);
+}
+
+.upload-img-btn {
+	display: flex;
+	justify-content: center;
+}
+</style>
+</head>
+
+<body>
+	<h1>some image gallery css</h1>
+	<div class="gallery-container">
+		<h2>flex-wrap: wrap. it will have unavoidable side gap tho</h2>
+		<div class="gallery">
+			<div class="img-container"><div class="add-img-btn">help</div></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+		</div>
+		<h2>overflow: auto; flex-wrap: nowrap</h2>
+		<div class="gallery-container">
+			<div class="gallery single-row">
+				<div class="img-container" style="visibility:hidden;"><div class="img-placeholder" style="width:var(--img-size);"></div></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			</div>
+			<div class="upload-img-btn">
+				<p>drag n drop or upload image(s)</p>
+			</div>
+		</div>
+	</div>
+<script>
+
+</script>
+</body>
+</html>

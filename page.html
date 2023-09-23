@@ -57,17 +57,26 @@ means 16px uniform gutters everywhere
 .gallery.single-row {
 	flex-wrap: nowrap;
 	overflow: auto;
+	width: 100%;
 }
 
-/* if img text is absolute position overlayed, 
-	 then parent img container has to be position relative */
+/* supposed to hold thumbnails */
 .img-container {
+  /* if img text is absolute position overlayed, 
+	   then parent img container has to be position relative */
 	position: relative;
-	aspect-ratio: 1.0;
 	border: 1px solid black;
-	display: flex;
-	cursor: pointer;
 	border-radius: var(--radius);
+	cursor: pointer;
+	aspect-ratio: 1.0;
+	height: var(--img-size);
+	width: var(--img-size);
+
+	/* just in case child isnt square */
+	min-width: var(--img-size); 
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
 }
 
 .img-container p {
@@ -80,22 +89,32 @@ means 16px uniform gutters everywhere
 	background-color: rgba(255,255,255,0.5); /* for some higher contrast in case img background isnt friendly */
 	border-radius: 0 0 var(--radius) var(--radius);
 
+	/* this should be applied to any single-line text element that could be long and overflow */
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
 img {
-	width: var(--img-size);
+	height: var(--img-size);
 	border-radius: var(--radius);
 }
 
-.add-img-btn {
-	width: var(--img-size);
-}
-
-.upload-img-btn {
+.btn {
 	display: flex;
 	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+}
+
+.side.btn {
+	min-width: calc( var(--img-size) / 2 );
+}
+
+.add-thumbnail.btn {
+	width: var(--img-size);
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 </style>
 </head>
@@ -103,9 +122,24 @@ img {
 <body>
 	<h1>some image gallery css</h1>
 	<div class="gallery-container">
+		<h2>overflow: auto; flex-wrap: nowrap</h2>
+		<div class="gallery-container" style="display:flex;flex-direction:row;">
+			<!-- <div class="side btn"><p><u>view<br>all</u></p></div> -->
+			<div class="gallery single-row">
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/400/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128/400"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+				<div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div>
+				<!-- <div class="img-container" style="visibility:hidden;"><div class="img-placeholder" style="width:var(--img-size);"></div></div> -->
+			</div>
+		</div>
+
 		<h2>flex-wrap: wrap. it will have unavoidable side gap tho</h2>
 		<div class="gallery">
-			<div class="img-container"><div class="add-img-btn">help</div></div>
 			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
 			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
 			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
@@ -114,25 +148,82 @@ img {
 			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
 			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
 			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
+			<!-- <div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div> -->
 		</div>
-		<h2>overflow: auto; flex-wrap: nowrap</h2>
-		<div class="gallery-container">
-			<div class="gallery single-row">
-				<div class="img-container" style="visibility:hidden;"><div class="img-placeholder" style="width:var(--img-size);"></div></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			</div>
-			<div class="upload-img-btn">
-				<p>drag n drop or upload image(s)</p>
-			</div>
+		<div class="btn">
+			<p>drag n drop or <u>upload</u> image(s)</p>
 		</div>
 	</div>
-<script>
+<script type="module">
+import Compressor from 'https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.esm.min.js';
+
+let find = (selector) => document.querySelector(selector) 
+// let findall = (selector) => document.querySelectorAll(selector) 
+let make = (tag) => {let e = document.createElement(tag); return e}
+let insert = (parent, child) => parent.appendChild(child)
+
+let canvas = make('canvas')
+insert(document.body, canvas)
+
+let ImagesSelectedMsg = () => {
+}
+
+let OnImageSelected = () => {
+	DisplayPlaceholder() /* for loading i guess */ // TODO: replace polaceholder images with js logic for empty galleries
+	MakeCompressed() /* done by library Compressor.js */
+	MakeThumbnail() /* TODO: draw on (offscreen)canvas and crop, then save to blob */
+		/* or actually, new Compressor(file, {..., drew: (context, canvas) => {
+			// about to get normal compressed photo from success()
+			// but hacky hook into post-process to crop and extract thumbnail too
+			resize(128px)
+			centerOnCanvas()
+			saveToFileAsWell()
+		}
+		*/
+
+	DisplayThumbnail()
+}
+
+let input = make('input')
+input.type = 'file'
+input.multiple = 'true'
+input.accept = 'image/*'
+input.style.display = 'none'
+input.onchange = (e) => {
+	console.log(input.files)
+	// File: {name, path, size, type, lastModified}
+
+	let success = ({compressResult, imgID}) => {
+		// compressResult is a Blob
+		let imgTag = find('#' + imgID)
+		imgTag.src = URL.createObjectURL(compressResult)
+	}
+	let error = (err) => {
+		console.log(err)
+	}
+
+	let gallery = find('.gallery-container .gallery')
+
+	for (let i = 0; i < input.files.length; i++) {
+		let div = make('div')
+		div.classList.add('img-container')
+		let img = make('img')
+		let imgID = 'img' + i
+		img.id = imgID
+		insert(div, img)
+		insert(gallery, div)
+		gallery.scrollLeft = gallery.scrollWidth
+
+		new Compressor(input.files[i], {
+			quality: 0.6,
+			maxHeight: 1000,
+			success: (compressResult) => success({compressResult, imgID}),
+			error,
+		})
+	}
+}
+
+find('.add-thumbnail.btn').onclick = () => input.click()
 
 </script>
 </body>

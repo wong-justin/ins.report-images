@@ -2,12 +2,12 @@
 #   make livereload PORT=<port>
 
 # # elm make goes to stderr, which is good since stdout will be hidden later (see below)
-# index.html: src/Main.elm
-# 	elm make src/Main.elm 
+build: index.html lib/app.js
+# build: page.html style.css
 
-.PHONY: test
-test:
-	echo hi
+lib/app.js: src/*.elm
+	# elm-format --yes src/
+	elm make src/Main.elm --output=lib/app.js
 
 # Note that python logs are hidden.
 # Also note that inner 'make' within this makefile also has stdout hidden,

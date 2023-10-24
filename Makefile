@@ -9,6 +9,10 @@ lib/app.js: src/*.elm
 	# elm-format --yes src/
 	elm make src/Main.elm --output=lib/app.js
 
+lib/compressor.js:
+	mkdir -p lib/
+	curl 'https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.esm.min.js' -o lib/compressor.js
+
 # Note that python logs are hidden.
 # Also note that inner 'make' within this makefile also has stdout hidden,
 #   due to nearly insuppressible noisy logs

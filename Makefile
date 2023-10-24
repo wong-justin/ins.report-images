@@ -22,6 +22,6 @@ lib/compressor.js:
 livereload:
 	@python3 -m http.server $(PORT) 2> /dev/null &
 	@printf "Opening browser.\n"
-	@cmd.exe /C min "http://localhost:$(PORT)/page.html"
+	@cmd.exe /C min "http://localhost:$(PORT)/" #page.html"
 	@printf "\nWatching for changes...\n"
 	@find . | entr -s 'make 1> /dev/null; bws ping; echo pinged 1>&2' 1> /dev/null

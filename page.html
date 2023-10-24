@@ -1,122 +1,10 @@
 <!DOCTYPE HTML>
-<html>
-<head>
-  <meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"><Paste>
-  <title>test gallery page</title>
-	<link rel="stylesheet" src="/style.css">
-<style>
-:root {
-	--radius: 4px; /* a small unit, also used for border radius. should be unit of basis for spacings and other cales *2, *4, *8, *16, etc. because i heard that's good aesthetic design */
-	--img-size: 128px;
-}
-html, body, div, img { 
-	padding: 0;
-	margin: 0;
-	border: 1px solid red;
-}
-/*
-8px margin around children
- ┌───────────────────┐
- │ . . . . .         │
- │ . ┌───┐ . ┌───┐   │
- │ . │   │ . │   │   │
- │ . └───┘ . └───┘   │
- │ . . . . .         │
- │                   │
- └───────────────────┘
-                   
-and 8x padding in parent
- ┌───────────────────┐
- │ . . . . . . . . . │
- │ . ┌───┐   ┌───┐ . │
- │ . │   │   │   │ . │
- │ . └───┘   └───┘ . │
- │ .               . │
- │ . . . . . . . . . │
- └───────────────────┘
-
-means 16px uniform gutters everywhere
-*/
-
-.gallery-container {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-}
-.gallery {
-	display: flex;
-	flex-wrap: wrap;
-	/* justify-content: space-between; */
-	padding: var(--radius);
-}
-.gallery > * {
-	margin: var(--radius);
-}
-
-.gallery.single-row {
-	flex-wrap: nowrap;
-	overflow: auto;
-	width: 100%;
-}
-
-/* supposed to hold thumbnails */
-.img-container {
-  /* if img text is absolute position overlayed, 
-	   then parent img container has to be position relative */
-	position: relative;
-	border: 1px solid black;
-	border-radius: var(--radius);
-	cursor: pointer;
-	aspect-ratio: 1.0;
-	height: var(--img-size);
-	width: var(--img-size);
-
-	/* just in case child isnt square */
-	min-width: var(--img-size); 
-	overflow: hidden;
-	display: flex;
-	justify-content: center;
-}
-
-.img-container p {
-	margin: 0;
-	padding: 0;
-	position: absolute;
-	bottom: 0;
-	width: calc(100% - 2*var(--radius));
-	border: var(--radius) solid rgba(0,0,0,0.0); /* ends up matching background color */
-	background-color: rgba(255,255,255,0.5); /* for some higher contrast in case img background isnt friendly */
-	border-radius: 0 0 var(--radius) var(--radius);
-
-	/* this should be applied to any single-line text element that could be long and overflow */
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-img {
-	height: var(--img-size);
-	border-radius: var(--radius);
-}
-
-.btn {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	cursor: pointer;
-}
-
-.side.btn {
-	min-width: calc( var(--img-size) / 2 );
-}
-
-.add-thumbnail.btn {
-	width: var(--img-size);
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-</style>
+<html lang="en">
+	<head>
+  	<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+  	<title>test gallery page</title>
+		<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -126,44 +14,57 @@ img {
 		<div class="gallery-container" style="display:flex;flex-direction:row;">
 			<!-- <div class="side btn"><p><u>view<br>all</u></p></div> -->
 			<div class="gallery single-row">
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/400/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128/400"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-				<div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/400x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x400.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<!-- <div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div> -->
 				<!-- <div class="img-container" style="visibility:hidden;"><div class="img-placeholder" style="width:var(--img-size);"></div></div> -->
 			</div>
+		</div>
+		<div class="btn">
+			<p>drag n drop or <u>upload images</u></p>
 		</div>
 
 		<h2>flex-wrap: wrap. it will have unavoidable side gap tho</h2>
 		<div class="gallery">
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
-			<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="https://picsum.photos/128"></div>
 			<!-- <div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div> -->
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
 		</div>
 		<div class="btn">
-			<p>drag n drop or <u>upload</u> image(s)</p>
+			<p>drag n drop or <u>upload images</u></p>
 		</div>
 	</div>
 <script type="module">
-import Compressor from 'https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.esm.min.js';
+import Compressor from '../lib/compressor.js';
 
 let find = (selector) => document.querySelector(selector) 
+let findin = (element, selector) => element.querySelector(selector)
 // let findall = (selector) => document.querySelectorAll(selector) 
 let make = (tag) => {let e = document.createElement(tag); return e}
 let insert = (parent, child) => parent.appendChild(child)
 
-let canvas = make('canvas')
-insert(document.body, canvas)
+let State = {
+}
+
+let Message = {
+	StartPickingImages,
+	CreatePlaceholderImages,
+	CompressImage,
+	PopulatePlaceholder,
+}
 
 let ImagesSelectedMsg = () => {
 }
@@ -184,47 +85,84 @@ let OnImageSelected = () => {
 	DisplayThumbnail()
 }
 
+let sleep = (ms) => new Promise(res => setTimeout(res, ms))
+
 let input = make('input')
 input.type = 'file'
 input.multiple = 'true'
 input.accept = 'image/*'
 input.style.display = 'none'
-input.onchange = (e) => {
+input.onchange = async (e) => {
+	// compresses images and displays thumbnails
+	// note that compressor is async but still on UI thread, so jitters are noticeable instead of hidden
+	// slowish is ok, esp compared to internachi
+
 	console.log(input.files)
 	// File: {name, path, size, type, lastModified}
 
-	let success = ({compressResult, imgID}) => {
-		// compressResult is a Blob
-		let imgTag = find('#' + imgID)
-		imgTag.src = URL.createObjectURL(compressResult)
-	}
-	let error = (err) => {
-		console.log(err)
-	}
-
 	let gallery = find('.gallery-container .gallery')
 
-	for (let i = 0; i < input.files.length; i++) {
-		let div = make('div')
-		div.classList.add('img-container')
-		let img = make('img')
-		let imgID = 'img' + i
-		img.id = imgID
-		insert(div, img)
-		insert(gallery, div)
-		gallery.scrollLeft = gallery.scrollWidth
+	let promiseMakers = []
 
-		new Compressor(input.files[i], {
-			quality: 0.6,
-			maxHeight: 1000,
-			success: (compressResult) => success({compressResult, imgID}),
-			error,
+	let placholderNodes = await createPlaceholders(input.files.length)
+
+	for (let i = 0; i < input.files.length; i++) {
+		let createPromise = () => new Promise((resolve, reject) => {
+			let success = (compressResult) => {
+				// compressResult is an img Blob
+				let imgTag = findin(placeholderNodes[i], 'img')
+				imgTag.src = URL.createObjectURL(compressResult)
+				resolve()
+			}
+			let error = (e) => {
+				console.log(e)
+				reject()
+			}
+			new Compressor(input.files[i], {
+				quality: 0.6,
+				maxHeight: 1000,
+				success,
+				error,
+			})
 		})
+		promiseMakers.push(createPromise)
+	}
+
+	for (let i = 0; i < promiseMakers.length; i++) {
+		let promise = promiseMakers[i]
+		await promise()
+		await sleep(200) // 0 would lead to heavy processing time on UI thread and seem a bit too quick for the user
 	}
 }
 
-find('.add-thumbnail.btn').onclick = () => input.click()
+let createPlaceholders = async (count) => {
+	let gallery = find('.gallery.single-row')
 
+	let placholderNodes = []
+	for (let i = 0; i < count; i++) {
+		let div = make('div')
+		div.classList.add('img-container')
+		let imgTag = make('img')
+		let imgID = 'img' + i
+		imgTag.id = imgID
+		insert(div, imgTag)
+		insert(gallery, div)
+		placeholderNodes.push(div)
+		await sleep(10) // slow enough to minimize layout shift time, but perceptible to user on purpose. eg. a warning that if they upload 100 it's gonna take longer than uploading 10
+		// gallery.scrollLeft = gallery.scrollWidth
+	}
+	return placeholderNodes
+}
+
+find('.btn').onclick = () => input.click()
+
+let gallery = find('.gallery.single-row')
+gallery.scrollLeft = gallery.scrollWidth
+
+
+let ws = new WebSocket('ws://localhost:8765')
+ws.onmessage = () => location.reload()
+console.log(ws)
 </script>
 </body>
 </html>

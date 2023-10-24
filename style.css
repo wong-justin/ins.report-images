@@ -1,0 +1,119 @@
+:root {
+	--radius: 4px; /* a small unit, also used for border radius. should be unit of basis for spacings and other cales *2, *4, *8, *16, etc. because i heard that's good aesthetic design */
+	--img-size: 128px;
+}
+html, body, div, img { 
+	padding: 0;
+	margin: 0;
+	border: 1px solid red;
+}
+/*
+8px margin around children
+ ┌───────────────────┐
+ │ . . . . .         │
+ │ . ┌───┐ . ┌───┐   │
+ │ . │   │ . │   │   │
+ │ . └───┘ . └───┘   │
+ │ . . . . .         │
+ │                   │
+ └───────────────────┘
+                   
+and 8x padding in parent
+ ┌───────────────────┐
+ │ . . . . . . . . . │
+ │ . ┌───┐   ┌───┐ . │
+ │ . │   │   │   │ . │
+ │ . └───┘   └───┘ . │
+ │ .               . │
+ │ . . . . . . . . . │
+ └───────────────────┘
+
+means 16px uniform gutters everywhere
+*/
+
+.gallery-container {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+.gallery {
+	display: flex;
+	flex-wrap: wrap;
+	/* justify-content: space-between; */
+	padding: var(--radius);
+}
+.gallery > * {
+	margin: var(--radius);
+}
+
+.gallery.single-row > .img-container {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+.gallery.single-row {
+	padding-top: 0;
+	padding-bottom: 0;
+
+	flex-wrap: nowrap;
+	overflow: auto;
+	width: 100%;
+}
+
+/* supposed to hold thumbnails */
+.img-container {
+  /* if img text is absolute position overlayed, 
+	   then parent img container has to be position relative */
+	position: relative;
+	border: 1px solid black;
+	border-radius: var(--radius);
+	cursor: pointer;
+	aspect-ratio: 1.0;
+	height: var(--img-size);
+	width: var(--img-size);
+
+	/* just in case child isnt square */
+	min-width: var(--img-size); 
+	overflow: hidden;
+	display: flex;
+	justify-content: center;
+}
+
+.img-container p {
+	margin: 0;
+	padding: 0;
+	position: absolute;
+	bottom: 0;
+	width: calc(100% - 2*var(--radius));
+	border: var(--radius) solid rgba(0,0,0,0.0); /* ends up matching background color */
+	background-color: rgba(255,255,255,0.5); /* for some higher contrast in case img background isnt friendly */
+	border-radius: 0 0 var(--radius) var(--radius);
+
+	/* this should be applied to any single-line text element that could be long and overflow */
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+img {
+	height: var(--img-size);
+	border-radius: var(--radius);
+}
+
+.btn {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+}
+
+.side.btn {
+	min-width: calc( var(--img-size) / 2 );
+}
+
+.add-thumbnail.btn {
+	width: var(--img-size);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+

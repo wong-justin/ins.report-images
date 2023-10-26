@@ -27,8 +27,9 @@ main =
 
 type alias Model =
     { images : List Image
-    , jobs : Jobs
+    , jobs : List Job
     }
+
 
 
 -- example initial job queue:
@@ -37,58 +38,46 @@ type alias Model =
 -- {c: notstarted, d}
 -- {d: notstarted, e}
 -- {e: notstarted, none}
--- 
+--
 -- if user cancels jobs c (deleting unstarted job(s) in middle)
 -- {a: started, b} root
 -- {b: notstarted, d}
 -- {d: notstarted, e}
 -- {e: notstarted, none}
--- 
--- if user cancels pending job a and other job b (a remains because repsponse will come and delete `a` at that time. next available job is started):
--- {a: started, none}
+--
+-- if user cancels pending job a and other job b (next available job is started. when response for a comes back, just ignore because job is no longer tracked):
 -- {d: started, e} root
 -- {e: notstarted, none}
--- 
+--
 -- if job d finishes next:
--- {a: started, none}
 -- {e: started, none} root
 --
--- if job e finishes next, a still not done yet:
--- {a : started, none}
--- no root
---
 -- if user adds new jobs (dict union?):
--- {a : waitingtodie, none}
--- {f: started, g} root
--- {g: notstarted, h}
--- {h: notstarted, none}
--- 
+-- {e: started, x} root
+-- {x: notstarted, y}
+-- {y: notstarted, z}
+-- {z: notstarted, none}
+--
 -- so...
--- * typically only one job pending at a time
---   * but can be more than one if a started job is cancelled
---   * but only one job should be pending and have a queue (the 'root' node, until the last job has no more queued)
--- * traversing linked list necessary
+-- * only one job pending at a time; root
+--   * root has no prev jobs linking to it
+-- * traversing linked list necessary, either maintaining an index or first/last ids, or in functions
 -- * started jobs go out the port, async, no order
 -- * finished job notifications come from the port, async, no order
--- * started jobs should have no ancestors (ie. no other node should have a started node as next)
--- * ACTUALLY no need to keep zombie jobs
+-- * no need to keep zombie jobs
 
 
+type alias Job =
+    ( JobID, JobStatus )
 
-type alias Jobs =
-    Dict JobID {status: JobStatus, next: Maybe JobID}
 
 type alias JobID =
     ImageID
 
-type JobStatus = Started | NotStarted
 
-
-
--- type alias Job =
---     { curr : ImageID
---     , next : Maybe ImageID
---     }
+type JobStatus
+    = Started
+    | NotStarted
 
 
 type alias ImageURL =
@@ -133,7 +122,7 @@ init _ =
             , { status = Loaded "../assets/128x400.jpg", description = "lorem ipsum lorem ipsum", id = "2" }
             , { status = NotLoaded, description = "hasn't been loaded yet", id = "3" }
             ]
-      , jobs = Dict.empty
+      , jobs = []
       }
     , Cmd.none
     )
@@ -173,53 +162,76 @@ update msg model =
         -- TODO: use ports to get Blob urls from Files, since elm hides the useful aspects of web/js Blob and File objects that i need, aka URL.createObjectURL(blob/file)
         ImagesUploaded file remainingFiles ->
             let
-                files =
-                    uniteUploads file remainingFiles
-
                 newImages =
-                    List.map imageFromFile files
+                    uniteUploads file remainingFiles
+                        |> List.map imageFromFile
 
-                newJobs =
-                    createJobs newImages
+                maybeStartJobs : List Job -> ( List Job, Cmd Msg )
+                maybeStartJobs jobs =
+                    case jobs of
+                        -- there's at least one existing job and none are started because first isnt started
+                        -- so update it and start the side effect
+                        ( jobID, NotStarted ) :: remaining ->
+                            ( ( jobID, Started ) :: remaining
+                            , Cmd.none
+                              --Port.StartJob jobID
+                            )
+
+                        -- else there are already pending jobs, so do nothing
+                        _ ->
+                            ( jobs, Cmd.none )
+
+                ( updatedJobs, cmd ) =
+                        newImages
+                        |> List.map (\image -> ( image.id, NotStarted ) )
+                        |> List.append model.jobs
+                        |> maybeStartJobs
             in
             ( { model
-                | images = List.append model.images newImages
-                , jobs = Dict.union model.jobs newJobs
+                | images = model.images ++ newImages
+                , jobs = updatedJobs
               }
-            , Cmd.none
-              -- , Ports.Out ImagePlaceholders
+            , cmd
             )
 
-        FromElmStartJob -> let jobID = jobs.startNext; port.fromElm { process jobID }
-        ToElmFinishJob finishedJobID -> jobs.finish finishedJobID (may send startjob msg automatically)
 
 
-createJobs : List Image -> Jobs
-createJobs images =
-    images
-        |> List.map (\image -> image.id)
-        |> iterateStaggeredTuples
-        |> Dict.fromList
-
-joinJobs : Jobs -> Jobs -> Jobs
-joinJobs existing new
+-- FromElmStartJob -> let jobID = jobs.startNext; port.fromElm { process jobID }
+-- ToElmFinishJob finishedJobID -> jobs.finish finishedJobID (may send startjob msg automatically)
 
 
-iterateStaggeredTuples : List a -> List ( a, Maybe a )
-iterateStaggeredTuples list =
-    -- [a,b,c,d] ->
-    -- [(a,Just b),(b,Just c),(c,Just d),(d,Nothing)]
-    let
-        listA =
-            list
 
-        listB =
-            list
-                |> List.map (\x -> Just x)
-                |> List.drop 1
-                |> List.append [ Nothing ]
-    in
-    List.map2 Tuple.pair listA listB
+-- startNextJob : JobQueue -> JobQueue Msg
+-- startNextJob jobs =
+--         let
+--             firstJob = Dict.get jobs.rootID jobs.all
+--         in
+--                 Dict.update jobs.rootID (\mJob -> case mJob of
+--                         Nothing ->
+--         { queue |
+--
+-- finishJob : JobQueue -> JobID -> JobQueue Msg
+--
+-- addJobs : JobQueue -> JobQueue -> JobQueue Msg
+--
+-- removeJobs : JobQueue -> Set JobID -> JobQueue
+
+
+-- iterateStaggeredTuples : List a -> List ( a, Maybe a )
+-- iterateStaggeredTuples list =
+--     -- [a,b,c,d] ->
+--     -- [(a,Just b),(b,Just c),(c,Just d),(d,Nothing)]
+--     let
+--         listA =
+--             list
+-- 
+--         listB =
+--             list
+--                 |> List.map (\x -> Just x)
+--                 |> List.drop 1
+--                 |> List.append [ Nothing ]
+--     in
+--     List.map2 Tuple.pair listA listB
 
 
 addFilesToImages : List Image -> List File -> List Image

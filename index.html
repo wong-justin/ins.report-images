@@ -10,20 +10,48 @@
 
 <body>
 	<div id="root"></div>
-	<script>
+	<script type="module">
+		import Compressor from '../lib/compressor.js'
+
 		let app = Elm.Main.init({node: document.querySelector('#root')})
 		
 		app.ports.portJobFromElm.subscribe( (msgFromElm) => {
-			app.ports.portJobToElm.send(msgFromElm)
+			// msgFromElm = {file: File, id: int}
+			let {file, id} = msgFromElm
+			console.log(msgFromElm)
+
+		new Promise((resolve, reject) => {
+			let success = (compressResult) => {
+				// compressResult is an img Blob
+				let url = URL.createObjectURL(compressResult)
+				let result = { "id": id, "url": url }
+				app.ports.portJobToElm.send( result )
+
+				resolve()
+			}
+			let error = (e) => {
+				console.log(e)
+				reject()
+			}
+			new Compressor(file, {
+				quality: 0.6,
+				maxHeight: 1000,
+				success,
+				error,
+			})
 		})
 
-		app.ports.portFilesFromElm.subscribe( (msgFromElm) => {
-			// msgFromElm = FileList [ {path, ...} ]
-			console.log(msgFromElm)
-			let fileList = msgFromElm;
-			let urls = [...fileList].map( (file) => ({"url": URL.createObjectURL(file)}) )
-			app.ports.portFilesToElm.send(urls)
 		})
+
+		// app.ports.portFilesFromElm.subscribe( (msgFromElm) => {
+		// 	// msgFromElm = FileList [ {path, ...} ]
+		// 	// note that object URLs should be revoked at some point to free memory
+		// 	// also note that there's a limit to how many object URLs can be made at once / how much memory can be used
+		// 	let fileList = msgFromElm
+		// 	console.log(fileList)
+		// 	let urls = [...fileList].map( (file) => ({"url": URL.createObjectURL(file)}) )
+		// 	app.ports.portFilesToElm.send(urls)
+		// })
 	</script>
 </body>
 </html>

@@ -1,5 +1,8 @@
 port module Main exposing (..)
 
+-- import Html.Keyed as Keyed
+-- import Html.Lazy exposing (lazy)
+
 import Browser
 import Dict exposing (Dict)
 import File exposing (File)
@@ -7,8 +10,6 @@ import File.Select
 import Html exposing (Html, button, div, h2, img, input, p, text)
 import Html.Attributes exposing (class, multiple, src, style, type_)
 import Html.Events exposing (on, onClick)
-import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JP
 
@@ -32,17 +33,19 @@ type alias Model =
     }
 
 
+
+-- making sure its serializable over port
+
+
 type alias Job =
-    ( JobID, JobStatus )
+    { id : ImageID
+    , file : JSFile
+    , started : Bool
+    }
 
 
-type alias JobID =
-    ImageID
-
-
-type JobStatus
-    = Started
-    | NotStarted
+type alias JSFile =
+    JD.Value
 
 
 type alias ImageURL =
@@ -54,7 +57,7 @@ type alias ImageURL =
 
 
 type alias ImageID =
-    String
+    Int
 
 
 type alias Image =
@@ -82,10 +85,10 @@ type CompressMsg
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { images =
-            [ { status = Loaded "../assets/400x128.jpg", description = "lorem ipsum lorem ipsum", id = "0" }
-            , { status = Loaded "../assets/128x128.jpg", description = "lorem ipsum lorem ipsum", id = "1" }
-            , { status = Loaded "../assets/128x400.jpg", description = "lorem ipsum lorem ipsum", id = "2" }
-            , { status = NotLoaded, description = "hasn't been loaded yet", id = "3" }
+            [ { status = Loaded "../assets/400x128.jpg", description = "lorem ipsum lorem ipsum", id = 0 }
+            , { status = Loaded "../assets/128x128.jpg", description = "lorem ipsum lorem ipsum", id = 1 }
+            , { status = Loaded "../assets/128x400.jpg", description = "lorem ipsum lorem ipsum", id = 2 }
+            , { status = NotLoaded, description = "hasn't been loaded yet", id = 3 }
             ]
       , jobs = []
       }
@@ -99,9 +102,9 @@ init _ =
 
 type Msg
     = Noop
-    | OpenImagePicker
-    | ImagesUploaded File (List File) -- weird return type from elm people: first file, and other files if they exist (instead of just a list in the first place)
-    | JobFinished JobID
+      -- | OpenImagePicker
+      -- | ImagesUploaded File (List File) -- weird return type from elm people: first file, and other files if they exist (instead of just a list in the first place)
+    | JobFinished { id : ImageID, url : ImageURL }
     | FileListChosen JD.Value
     | FileListReturned JD.Value
 
@@ -126,60 +129,64 @@ update msg model =
         Noop ->
             ( model, Cmd.none )
 
-        OpenImagePicker ->
-            ( model, File.Select.files [ "image/*" ] ImagesUploaded )
-
-        -- TODO: use ports to get Blob urls from Files, since elm hides the useful aspects of web/js Blob and File objects that i need, aka URL.createObjectURL(blob/file)
-        ImagesUploaded file remainingFiles ->
-            let
-                newImages =
-                    uniteUploads file remainingFiles
-                        |> List.map imageFromFile
-
-                maybeStartJobs : List Job -> ( List Job, Cmd Msg )
-                maybeStartJobs jobs =
-                    case jobs of
-                        -- there's at least one existing job and none are started because first isnt started
-                        -- so update it and start the side effect
-                        ( jobID, NotStarted ) :: remaining ->
-                            ( ( jobID, Started ) :: remaining
-                            , portJobFromElm jobID
-                            )
-
-                        -- else there are already pending jobs, so do nothing
-                        _ ->
-                            ( jobs, Cmd.none )
-
-                ( updatedJobs, cmd ) =
-                    newImages
-                        |> List.map (\image -> ( image.id, NotStarted ))
-                        |> List.append model.jobs
-                        |> maybeStartJobs
-            in
-            ( { model
-                | images = model.images ++ newImages
-                , jobs = updatedJobs
-              }
-            , cmd
-            )
-
-        FileListChosen fileListJson ->
-            ( model, portFilesFromElm fileListJson )
-
+        --  OpenImagePicker ->
+        --      ( model, File.Select.files [ "image/*" ] ImagesUploaded )
+        -- -- TODO: use ports to get Blob urls from Files, since elm hides the useful aspects of web/js Blob and File objects that i need, aka URL.createObjectURL(blob/file)
+        -- ImagesUploaded file remainingFiles ->
+        --     let
+        --         newImages =
+        --             uniteUploads file remainingFiles
+        --                 |> List.map imageFromFile
+        --         maybeStartJobs : List Job -> ( List Job, Cmd Msg )
+        --         maybeStartJobs jobs =
+        --             case jobs of
+        --                 -- there's at least one existing job and none are started because first isnt started
+        --                 -- so update it and start the side effect
+        --                 ( jobID, NotStarted ) :: remaining ->
+        --                     ( ( jobID, Started ) :: remaining
+        --                     , portJobFromElm jobID
+        --                     )
+        --                 -- else there are already pending jobs, so do nothing
+        --                 _ ->
+        --                     ( jobs, Cmd.none )
+        --         ( updatedJobs, cmd ) =
+        --             newImages
+        --                 |> List.map (\image -> ( image.id, NotStarted ))
+        --                 |> List.append model.jobs
+        --                 |> maybeStartJobs
+        --     in
+        --     ( { model
+        --         | images = model.images ++ newImages
+        --         , jobs = updatedJobs
+        --       }
+        --     , cmd
+        --     )
         FileListReturned fileListJson ->
+            ( model, Cmd.none )
+
+        --portFilesFromElm fileListJson )
+        FileListChosen fileListJson ->
             let
+                maxID =
+                    model.images
+                        |> List.map (\image -> image.id)
+                        |> List.foldl Basics.max 0
+
                 filepathDecoder : JD.Decoder String
                 filepathDecoder =
                     JD.field "url" JD.string
 
                 imageDecoder : JD.Decoder Image
                 imageDecoder =
-                    -- id, description, status
                     JD.map3 Image
-                        filepathDecoder
-                        filepathDecoder
-                        (JD.map (\filepath -> Loaded filepath) filepathDecoder)
+                        (JD.succeed 0)
+                        -- id: placeholder, replaced later
+                        (JD.succeed "description")
+                        -- description: placeholder too
+                        -- (JD.map (\filepath -> Loaded filepath) filepathDecoder)
+                        (JD.succeed NotLoaded)
 
+                -- status: loaded object url for image file
                 fileListDecoder : JD.Decoder (List Image)
                 fileListDecoder =
                     JD.list imageDecoder
@@ -191,34 +198,72 @@ update msg model =
                                 case result of
                                     Ok imageList ->
                                         imageList
+                                            |> List.indexedMap
+                                                (\i image ->
+                                                    { id = maxID + i + 1
+                                                    , description = String.fromInt (i + maxID)
+                                                    , status = image.status
+                                                    }
+                                                )
 
                                     Err decodeErr ->
                                         decodeErr
-                                        |> Debug.log "Image decoding error"
-                                        |> (\_ -> [])
+                                            |> Debug.log "Image decoding error"
+                                            |> (\_ -> [])
                            )
+
+                ( updatedJobs, cmd ) =
+                    let
+                        jsfiles =
+                            fileListJson
+                                |> JD.decodeValue (JD.list JD.value)
+                                |> (\result ->
+                                        case result of
+                                            Ok fileList ->
+                                                fileList
+
+                                            Err decodeErr ->
+                                                    decodeErr
+                                                    |> Debug.log "FileList decoding error"
+                                                    |> (\_ -> [])
+                                   )
+                    in
+                    newImages
+                        |> List.map (\image -> image.id)
+                        |> List.map2 (\jsfile id -> { id = id, file = jsfile, started = False }) jsfiles
+                        |> List.append model.jobs
+                        |> maybeStartJobs
             in
-            ( { model | images = model.images ++ newImages }, Cmd.none )
+            ( { model | images = model.images ++ newImages, jobs = updatedJobs }, cmd )
 
-        JobFinished jobID ->
+        JobFinished { id, url } ->
             let
-                updatedJobs =
+                ( updatedJobs, cmd ) =
                     case model.jobs of
-                        x :: xs ->
-                            xs
+                        finished :: remaining ->
+                            maybeStartJobs remaining
 
-                        _ ->
-                            -- if job from port no longer exists in elm, then oh well, do nothing
-                            model.jobs
+                        [] ->
+                            ( [], Cmd.none )
 
-                -- updatedImages = model.images -- TODO: update image src or whatever when given from port
+                updatedImages =
+                    model.images
+                        |> List.map
+                            (\image ->
+                                if image.id == id then
+                                    { image | status = Loaded url }
+
+                                else
+                                    image
+                            )
+                        |> Debug.log "newImages"
+
             in
             ( { model
                 | jobs = updatedJobs
-
-                -- , images = updatedImages
+                , images = updatedImages
               }
-            , Cmd.none
+            , cmd
             )
 
 
@@ -226,10 +271,10 @@ update msg model =
 -- PORTS
 
 
-port portJobFromElm : JobID -> Cmd msg
+port portJobFromElm : Job -> Cmd msg
 
 
-port portJobToElm : (JobID -> msg) -> Sub msg
+port portJobToElm : ({ id : ImageID, url : ImageURL } -> msg) -> Sub msg
 
 
 port portFilesFromElm : JD.Value -> Cmd msg
@@ -252,68 +297,22 @@ subscriptions _ =
 
 
 -- UPDATE
--- FromElmStartJob -> let jobID = jobs.startNext; port.fromElm { process jobID }
--- ToElmFinishJob finishedJobID -> jobs.finish finishedJobID (may send startjob msg automatically)
--- startNextJob : JobQueue -> JobQueue Msg
--- startNextJob jobs =
---         let
---             firstJob = Dict.get jobs.rootID jobs.all
---         in
---                 Dict.update jobs.rootID (\mJob -> case mJob of
---                         Nothing ->
---         { queue |
---
--- finishJob : JobQueue -> JobID -> JobQueue Msg
---
--- addJobs : JobQueue -> JobQueue -> JobQueue Msg
---
--- removeJobs : JobQueue -> Set JobID -> JobQueue
--- iterateStaggeredTuples : List a -> List ( a, Maybe a )
--- iterateStaggeredTuples list =
---     -- [a,b,c,d] ->
---     -- [(a,Just b),(b,Just c),(c,Just d),(d,Nothing)]
---     let
---         listA =
---             list
---
---         listB =
---             list
---                 |> List.map (\x -> Just x)
---                 |> List.drop 1
---                 |> List.append [ Nothing ]
---     in
---     List.map2 Tuple.pair listA listB
 
 
-addFilesToImages : List Image -> List File -> List Image
-addFilesToImages existingImages newFiles =
-    newFiles
-        |> List.map (\file -> imageFromFile file)
-        |> List.append existingImages
+maybeStartJobs : List Job -> ( List Job, Cmd Msg )
+maybeStartJobs jobs =
+    case jobs of
+        first :: remaining ->
+            if not first.started then
+                ( { first | started = True } :: remaining
+                , portJobFromElm first
+                )
 
+            else
+                ( jobs, Cmd.none )
 
-
--- reduce by comparing prev,next with max fn, and initializing accumulator as fake id -1
--- TODO: better id generation, maybe with hash of blob, or maybe blob url for everything
-
-
-createID : File -> String
-createID file =
-    File.name file
-
-
-imageFromFile : File -> Image
-imageFromFile file =
-    { description = createID file
-    , id = createID file
-    , status = NotLoaded
-    }
-
-
-uniteUploads : File -> List File -> List File
-uniteUploads file remainingFiles =
-    file :: remainingFiles
-
+        _ ->
+            ( jobs, Cmd.none )
 
 
 -- VIEW
@@ -327,9 +326,8 @@ view model =
         [ h2 [] [ text "gallery" ]
         , viewThumbnails model.images
         , div [ class "btn" ]
-            [ button [ onClick OpenImagePicker ] [ text "drag n drop or upload images" ]
+            [ fileUploadBtn [ onFilesUploaded FileListChosen ] []
             ]
-        , fileUploadBtn [ onFilesUploaded FileListChosen ] []
         ]
 
 

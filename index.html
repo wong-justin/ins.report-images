@@ -1,0 +1,180 @@
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+  	<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+  	<title>test gallery page</title>
+		<link rel="stylesheet" href="style.css">
+		<script src="lib/app.js"></script>
+</head>
+
+<body>
+	<div id="root"></div>
+	<script>
+		let app = Elm.Main.init({node: document.querySelector('#root')})
+		
+		app.ports.portJobFromElm.subscribe( (msgFromElm) => {
+			app.ports.portJobToElm.send(msgFromElm)
+		})
+
+		app.ports.portFilesFromElm.subscribe( (msgFromElm) => {
+			// msgFromElm = FileList [ {path, ...} ]
+			console.log(msgFromElm)
+			let fileList = msgFromElm;
+			let urls = [...fileList].map( (file) => ({"url": URL.createObjectURL(file)}) )
+			app.ports.portFilesToElm.send(urls)
+		})
+	</script>
+</body>
+</html>
+<!--
+<body>
+	<h1>some image gallery css</h1>
+	<div class="gallery-container">
+		<h2>overflow: auto; flex-wrap: nowrap</h2>
+		<div class="gallery-container" style="display:flex;flex-direction:row;">
+			<!-- <div class="side btn"><p><u>view<br>all</u></p></div>
+			<div class="gallery single-row">
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/400x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x400.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<!-- <div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div> 
+				<!-- <div class="img-container" style="visibility:hidden;"><div class="img-placeholder" style="width:var(--img-size);"></div></div>
+			</div>
+		</div>
+		<div class="btn">
+			<p>drag n drop or <u>upload images</u></p>
+		</div>
+
+		<h2>flex-wrap: wrap. it will have unavoidable side gap tho</h2>
+		<div class="gallery">
+			<!-- <div class="img-container"><div class="add-thumbnail btn"><u>upload<br>images</u></div></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+				<div class="img-container"><p>lorem ipsum lorem ipsum</p><img src="../assets/128x128.jpg"></div>
+		</div>
+		<div class="btn">
+			<p>drag n drop or <u>upload images</u></p>
+		</div>
+	</div>
+<script type="module">
+import Compressor from '../lib/compressor.js';
+
+let find = (selector) => document.querySelector(selector) 
+// let findall = (selector) => document.querySelectorAll(selector) 
+let make = (tag) => {let e = document.createElement(tag); return e}
+let insert = (parent, child) => parent.appendChild(child)
+
+let canvas = make('canvas')
+insert(document.body, canvas)
+
+let ImagesSelectedMsg = () => {
+}
+
+let OnImageSelected = () => {
+	DisplayPlaceholder() /* for loading i guess */ // TODO: replace polaceholder images with js logic for empty galleries
+	MakeCompressed() /* done by library Compressor.js */
+	MakeThumbnail() /* TODO: draw on (offscreen)canvas and crop, then save to blob */
+		/* or actually, new Compressor(file, {..., drew: (context, canvas) => {
+			// about to get normal compressed photo from success()
+			// but hacky hook into post-process to crop and extract thumbnail too
+			resize(128px)
+			centerOnCanvas()
+			saveToFileAsWell()
+		}
+		*/
+
+	DisplayThumbnail()
+}
+
+let sleep = (ms) => new Promise(res => setTimeout(res, ms))
+
+let input = make('input')
+input.type = 'file'
+input.multiple = 'true'
+input.accept = 'image/*'
+input.style.display = 'none'
+input.onchange = async (e) => {
+	// compresses images and displays thumbnails
+	// note that compressor is async but still on UI thread, so jitters are noticeable instead of hidden
+	// slowish is ok, esp compared to internachi
+
+	console.log(input.files)
+	// File: {name, path, size, type, lastModified}
+
+	let gallery = find('.gallery-container .gallery')
+
+	let promiseMakers = []
+
+	await createPlaceholders(input.files.length)
+
+	for (let i = 0; i < input.files.length; i++) {
+		let createPromise = () => new Promise((resolve, reject) => {
+			let success = (compressResult) => {
+				// compressResult is an img Blob
+				let imgID = 'img' + i
+				let imgTag = find('#' + imgID)
+				imgTag.src = URL.createObjectURL(compressResult)
+				resolve()
+			}
+			let error = (e) => {
+				console.log(e)
+				reject()
+			}
+			new Compressor(input.files[i], {
+				quality: 0.6,
+				maxHeight: 1000,
+				success,
+				error,
+			})
+		})
+		promiseMakers.push(createPromise)
+	}
+
+	for (let i = 0; i < promiseMakers.length; i++) {
+		let promise = promiseMakers[i]
+		await promise()
+		await sleep(200) // 0 would lead to heavy processing time on UI thread and seem a bit too quick for the user
+	}
+}
+
+let createPlaceholders = async (count) => {
+	let gallery = find('.gallery.single-row')
+
+	for (let i = 0; i < count; i++) {
+		let div = make('div')
+		div.classList.add('img-container')
+		let imgTag = make('img')
+		let imgID = 'img' + i
+		imgTag.id = imgID
+		insert(div, imgTag)
+		insert(gallery, div)
+		await sleep(10) // slow enough to minimize layout shift time, but perceptible to user on purpose. eg. a warning that if they upload 100 it's gonna take longer than uploading 10
+		// gallery.scrollLeft = gallery.scrollWidth
+	}
+}
+
+find('.btn').onclick = () => input.click()
+
+let gallery = find('.gallery.single-row')
+gallery.scrollLeft = gallery.scrollWidth
+
+
+let ws = new WebSocket('ws://localhost:8765')
+ws.onmessage = () => location.reload()
+console.log(ws)
+</script>
+</body>
+</html>
+-->

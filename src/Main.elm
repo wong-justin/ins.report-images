@@ -1,15 +1,16 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
 import File exposing (File)
 import File.Select
-import Html exposing (Html, button, div, h2, img, p, text)
-import Html.Attributes exposing (class, src, style)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, h2, img, input, p, text)
+import Html.Attributes exposing (class, multiple, src, style, type_)
+import Html.Events exposing (on, onClick)
 import Html.Keyed as Keyed
 import Html.Lazy exposing (lazy)
-import Json.Decode.Pipeline
+import Json.Decode as JD
+import Json.Decode.Pipeline as JP
 
 
 main =
@@ -17,7 +18,7 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
 
 
@@ -29,42 +30,6 @@ type alias Model =
     { images : List Image
     , jobs : List Job
     }
-
-
-
--- example initial job queue:
--- {a: started, b} root
--- {b: notstarted, c}
--- {c: notstarted, d}
--- {d: notstarted, e}
--- {e: notstarted, none}
---
--- if user cancels jobs c (deleting unstarted job(s) in middle)
--- {a: started, b} root
--- {b: notstarted, d}
--- {d: notstarted, e}
--- {e: notstarted, none}
---
--- if user cancels pending job a and other job b (next available job is started. when response for a comes back, just ignore because job is no longer tracked):
--- {d: started, e} root
--- {e: notstarted, none}
---
--- if job d finishes next:
--- {e: started, none} root
---
--- if user adds new jobs (dict union?):
--- {e: started, x} root
--- {x: notstarted, y}
--- {y: notstarted, z}
--- {z: notstarted, none}
---
--- so...
--- * only one job pending at a time; root
---   * root has no prev jobs linking to it
--- * traversing linked list necessary, either maintaining an index or first/last ids, or in functions
--- * started jobs go out the port, async, no order
--- * finished job notifications come from the port, async, no order
--- * no need to keep zombie jobs
 
 
 type alias Job =
@@ -136,13 +101,18 @@ type Msg
     = Noop
     | OpenImagePicker
     | ImagesUploaded File (List File) -- weird return type from elm people: first file, and other files if they exist (instead of just a list in the first place)
-    | CancelJob JobID -- remove job from linked list if job is still pending (ie. exists)
-    | DeleteImage ImageID -- remove image with this id from list model.images
-    | FromElmStartJob JobID -- send async task in this linked list over port
-    | ToElmFinishJob CompressResults -- show finished image element, and start next job
+    | JobFinished JobID
+    | FileListChosen JD.Value
+    | FileListReturned JD.Value
 
 
 
+-- | CancelJob JobID -- remove job from linked list if job is still pending (ie. exists)
+-- | DeleteImage ImageID -- remove image with this id from list model.images
+-- | ToElmFinishJob CompressResults -- show finished image element, and start next job
+-- side effects used in update:
+-- * startJob (over a port)
+-- * filepicker dialog
 -- RequestCompressImages
 --| OtherMsgType
 --| ReceiveUploadedImages
@@ -173,8 +143,7 @@ update msg model =
                         -- so update it and start the side effect
                         ( jobID, NotStarted ) :: remaining ->
                             ( ( jobID, Started ) :: remaining
-                            , Cmd.none
-                              --Port.StartJob jobID
+                            , portJobFromElm jobID
                             )
 
                         -- else there are already pending jobs, so do nothing
@@ -182,8 +151,8 @@ update msg model =
                             ( jobs, Cmd.none )
 
                 ( updatedJobs, cmd ) =
-                        newImages
-                        |> List.map (\image -> ( image.id, NotStarted ) )
+                    newImages
+                        |> List.map (\image -> ( image.id, NotStarted ))
                         |> List.append model.jobs
                         |> maybeStartJobs
             in
@@ -194,13 +163,97 @@ update msg model =
             , cmd
             )
 
+        FileListChosen fileListJson ->
+            ( model, portFilesFromElm fileListJson )
+
+        FileListReturned fileListJson ->
+            let
+                filepathDecoder : JD.Decoder String
+                filepathDecoder =
+                    JD.field "url" JD.string
+
+                imageDecoder : JD.Decoder Image
+                imageDecoder =
+                    -- id, description, status
+                    JD.map3 Image
+                        filepathDecoder
+                        filepathDecoder
+                        (JD.map (\filepath -> Loaded filepath) filepathDecoder)
+
+                fileListDecoder : JD.Decoder (List Image)
+                fileListDecoder =
+                    JD.list imageDecoder
+
+                newImages =
+                    fileListJson
+                        |> JD.decodeValue fileListDecoder
+                        |> (\result ->
+                                case result of
+                                    Ok imageList ->
+                                        imageList
+
+                                    Err decodeErr ->
+                                        decodeErr
+                                        |> Debug.log "Image decoding error"
+                                        |> (\_ -> [])
+                           )
+            in
+            ( { model | images = model.images ++ newImages }, Cmd.none )
+
+        JobFinished jobID ->
+            let
+                updatedJobs =
+                    case model.jobs of
+                        x :: xs ->
+                            xs
+
+                        _ ->
+                            -- if job from port no longer exists in elm, then oh well, do nothing
+                            model.jobs
+
+                -- updatedImages = model.images -- TODO: update image src or whatever when given from port
+            in
+            ( { model
+                | jobs = updatedJobs
+
+                -- , images = updatedImages
+              }
+            , Cmd.none
+            )
 
 
+
+-- PORTS
+
+
+port portJobFromElm : JobID -> Cmd msg
+
+
+port portJobToElm : (JobID -> msg) -> Sub msg
+
+
+port portFilesFromElm : JD.Value -> Cmd msg
+
+
+port portFilesToElm : (JD.Value -> msg) -> Sub msg
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ portJobToElm JobFinished
+        , portFilesToElm FileListReturned
+        ]
+
+
+
+-- UPDATE
 -- FromElmStartJob -> let jobID = jobs.startNext; port.fromElm { process jobID }
 -- ToElmFinishJob finishedJobID -> jobs.finish finishedJobID (may send startjob msg automatically)
-
-
-
 -- startNextJob : JobQueue -> JobQueue Msg
 -- startNextJob jobs =
 --         let
@@ -215,8 +268,6 @@ update msg model =
 -- addJobs : JobQueue -> JobQueue -> JobQueue Msg
 --
 -- removeJobs : JobQueue -> Set JobID -> JobQueue
-
-
 -- iterateStaggeredTuples : List a -> List ( a, Maybe a )
 -- iterateStaggeredTuples list =
 --     -- [a,b,c,d] ->
@@ -224,7 +275,7 @@ update msg model =
 --     let
 --         listA =
 --             list
--- 
+--
 --         listB =
 --             list
 --                 |> List.map (\x -> Just x)
@@ -270,12 +321,43 @@ uniteUploads file remainingFiles =
 
 view : Model -> Html Msg
 view model =
-    div [ class "gallery-container" ]
+    div
+        [ class "gallery-container"
+        ]
         [ h2 [] [ text "gallery" ]
         , viewThumbnails model.images
         , div [ class "btn" ]
             [ button [ onClick OpenImagePicker ] [ text "drag n drop or upload images" ]
             ]
+        , fileUploadBtn [ onFilesUploaded FileListChosen ] []
+        ]
+
+
+
+-- probably need to manually have a hidden <input type=file multiple> so i can have a custom handler that keeps the native JS File obj around, for the sake of blob urls or whatever
+-- e.target.files = FileList
+-- e.target.files[0] = {lastModified=1690..., lastModifiedDate=Date, name="filename", path="some/path/filenname", size=12345..., type="mime/something"}
+
+
+onFilesUploaded : (JD.Value -> Msg) -> Html.Attribute Msg
+onFilesUploaded callbackMsg =
+    -- an attribute, like onClick
+    -- param is a message that holds a generic JD.Value type so it can be sent over port
+    -- eg. onFilesUploaded MyMsg, where MyMsg is defined as MyMsg Json.Value
+    -- the Json.Value is a FileList in javascript
+    --
+    -- note how json.map works:
+    -- json.map : (a -> val) -> Decoder a -> Decoder val
+    -- so it expects a function that returns a val, and returns a deocder that returns that val, and there's a middle type in common
+    on "change" (JD.map callbackMsg (JD.at [ "target", "files" ] JD.value))
+
+
+fileUploadBtn : List (Html.Attribute Msg) -> List (Html Msg) -> Html Msg
+fileUploadBtn attributes children =
+    div [ class "btn" ]
+        [ input
+            ([ type_ "file", multiple True ] ++ attributes)
+            children
         ]
 
 
@@ -290,7 +372,7 @@ viewThumbnails images =
         |> div
             [ style "display" "flex"
             , style "flex-direction" "row"
-            , class "gallery single-row"
+            , class "gallery" -- single-row"
             ]
 
 

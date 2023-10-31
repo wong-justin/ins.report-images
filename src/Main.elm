@@ -72,14 +72,15 @@ type ImageStatus
     | NotLoaded
 
 
-type CompressResults
+type JobResult
     = Success ImageURL
-    | Failure
+    | Error String
 
 
-type CompressMsg
-    = SendCompress ImageURL
-    | RecievedCompress CompressResults
+type alias JobResultWithID =
+    { id : ImageID
+    , result : JobResult
+    }
 
 
 init : () -> ( Model, Cmd Msg )
@@ -104,9 +105,10 @@ type Msg
     = Noop
       -- | OpenImagePicker
       -- | ImagesUploaded File (List File) -- weird return type from elm people: first file, and other files if they exist (instead of just a list in the first place)
-    | JobFinished { id : ImageID, url : ImageURL }
+    | JobFinished JD.Value -- { id : ImageID, successful : Bool, url : ImageURL }
     | FileListChosen JD.Value
     | FileListReturned JD.Value
+    | RemovePicture ImageID
 
 
 
@@ -164,7 +166,6 @@ update msg model =
         FileListReturned fileListJson ->
             ( model, Cmd.none )
 
-        --portFilesFromElm fileListJson )
         FileListChosen fileListJson ->
             let
                 maxID =
@@ -223,7 +224,7 @@ update msg model =
                                                 fileList
 
                                             Err decodeErr ->
-                                                    decodeErr
+                                                decodeErr
                                                     |> Debug.log "FileList decoding error"
                                                     |> (\_ -> [])
                                    )
@@ -236,8 +237,39 @@ update msg model =
             in
             ( { model | images = model.images ++ newImages, jobs = updatedJobs }, cmd )
 
-        JobFinished { id, url } ->
+        JobFinished jobResultJson ->
             let
+                resultDecoder : JD.Decoder JobResult
+                resultDecoder =
+                    JD.oneOf
+                        [ JD.map (\url -> Success url) (JD.field "url" JD.string)
+                        , JD.map (\errorMsg -> Error errorMsg) (JD.field "error" JD.string)
+                        ]
+
+                idDecoder : JD.Decoder ImageID
+                idDecoder =
+                    JD.field "id" JD.int
+
+                jobResultDecoder : JD.Decoder JobResultWithID
+                jobResultDecoder =
+                    JD.map2 JobResultWithID
+                        idDecoder
+                        resultDecoder
+
+                job =
+                    jobResultJson
+                        |> JD.decodeValue jobResultDecoder
+                        |> (\result ->
+                                case result of
+                                    Ok jobResult ->
+                                        jobResult
+
+                                    Err decodeErr ->
+                                        decodeErr
+                                            |> Debug.log "Job result decoding error"
+                                            |> (\_ -> { id = -1, result = Error "" })
+                           )
+
                 ( updatedJobs, cmd ) =
                     case model.jobs of
                         finished :: remaining ->
@@ -250,20 +282,35 @@ update msg model =
                     model.images
                         |> List.map
                             (\image ->
-                                if image.id == id then
-                                    { image | status = Loaded url }
+                                if image.id == job.id then
+                                    case job.result of
+                                        Success url ->
+                                            { image | status = Loaded url }
+
+                                        Error errorMsg ->
+                                            errorMsg
+                                                |> Debug.log "Job failed"
+                                                |> (\_ -> image)
 
                                 else
                                     image
                             )
-                        |> Debug.log "newImages"
-
             in
             ( { model
                 | jobs = updatedJobs
                 , images = updatedImages
               }
             , cmd
+            )
+
+        RemovePicture imgID ->
+            ( { model
+                | images =
+                    model.images
+                        |> List.filter (\image -> image.id /= imgID)
+                        |> Debug.log "images"
+              }
+            , Cmd.none
             )
 
 
@@ -274,7 +321,7 @@ update msg model =
 port portJobFromElm : Job -> Cmd msg
 
 
-port portJobToElm : ({ id : ImageID, url : ImageURL } -> msg) -> Sub msg
+port portJobToElm : (JD.Value -> msg) -> Sub msg
 
 
 port portFilesFromElm : JD.Value -> Cmd msg
@@ -313,6 +360,7 @@ maybeStartJobs jobs =
 
         _ ->
             ( jobs, Cmd.none )
+
 
 
 -- VIEW
@@ -368,9 +416,7 @@ viewThumbnails images =
         |> List.map (\image -> viewThumbnail image)
         -- images
         |> div
-            [ style "display" "flex"
-            , style "flex-direction" "row"
-            , class "gallery" -- single-row"
+            [ class "gallery" -- single-row"
             ]
 
 
@@ -386,8 +432,7 @@ noneAttribute =
 viewThumbnail : Image -> Html Msg
 viewThumbnail image =
     div [ class "img-container" ]
-        [ p [] [ text image.description ]
-        , img
+        [ img
             [ case image.status of
                 Loaded src_ ->
                     src src_
@@ -396,4 +441,11 @@ viewThumbnail image =
                     noneAttribute
             ]
             []
+        , p [] [ text image.description ]
+        , Html.map  -- whatever the final arg (node) produces, map it to something else instead
+            (\_ -> RemovePicture image.id)
+            (button
+                [ class "delete-btn", onClick () ]
+                [ text "X" ]
+            )
         ]

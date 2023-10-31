@@ -2,33 +2,23 @@
 	--radius: 4px; /* a small unit, also used for border radius. should be unit of basis for spacings and other cales *2, *4, *8, *16, etc. because i heard that's good aesthetic design */
 	--img-size: 128px;
 }
+
+* {
+	box-sizing: border-box;
+}
+
 html, body, div, img { 
 	padding: 0;
 	margin: 0;
 	border: 1px solid red;
 }
-/*
-8px margin around children
- ┌───────────────────┐
- │ . . . . .         │
- │ . ┌───┐ . ┌───┐   │
- │ . │   │ . │   │   │
- │ . └───┘ . └───┘   │
- │ . . . . .         │
- │                   │
- └───────────────────┘
-                   
-and 8x padding in parent
- ┌───────────────────┐
- │ . . . . . . . . . │
- │ . ┌───┐   ┌───┐ . │
- │ . │   │   │   │ . │
- │ . └───┘   └───┘ . │
- │ .               . │
- │ . . . . . . . . . │
- └───────────────────┘
 
-means 16px uniform gutters everywhere
+/* TODO:
+use this sidebar strategy for the gallery being the sidebar of the form
+https://every-layout.dev/layouts/sidebar/
+
+"wrap when elements are of equal width"
+
 */
 
 .gallery-container {
@@ -36,28 +26,35 @@ means 16px uniform gutters everywhere
 	flex-direction: column;
 	justify-content: center;
 }
+
+/*
+consider responsive grid effect like here:
+https://every-layout.dev/demos/grid-cards/
+
+.grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+}
+
+apparently it's a famous / the most useful css snippet for css grid
+
+responsive from 1 to inifinite cols, with row wrap too
+
+"children will grow to be between 250 and 499px i think (because at 500px, theyll shrink to fit a new child)"
+
+actually ~500 is the limit for one col ,but gets lower with more cols as overflow gets distributed across multiple children
+maxwidth at 1col: 2x
+maxwidth at 2col: 3x/2
+maxwidth at 3col: 4x/3
+and then +/- some px for padding, margins, borders
+
+*/
+
 .gallery {
-	display: flex;
-	flex-wrap: wrap;
-	/* justify-content: space-between; */
-	padding: var(--radius);
-}
-.gallery > * {
-	margin: var(--radius);
-}
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(128px, 100%), 1fr));
 
-.gallery.single-row > .img-container {
-	margin-top: 0;
-	margin-bottom: 0;
-}
-
-.gallery.single-row {
-	padding-top: 0;
-	padding-bottom: 0;
-
-	flex-wrap: nowrap;
-	overflow: auto;
-	width: 100%;
+	grid-gap: calc(2 * var(--radius)); /* between children */
+	padding: calc(2 * var(--radius)); /* outside outer children, aka inside the 4 sides of this container */
 }
 
 /* supposed to hold thumbnails */
@@ -67,24 +64,20 @@ means 16px uniform gutters everywhere
 	position: relative;
 	border: 1px solid black;
 	border-radius: var(--radius);
-	cursor: pointer;
+	/* cursor: pointer; */
 	aspect-ratio: 1.0;
-	height: var(--img-size);
-	width: var(--img-size);
 
 	/* just in case child isnt square */
-	min-width: var(--img-size); 
 	overflow: hidden;
 	display: flex;
 	justify-content: center;
 }
 
 .img-container p {
-	margin: 0;
-	padding: 0;
 	position: absolute;
 	bottom: 0;
-	width: calc(100% - 2*var(--radius));
+	margin: 0;
+	width: 100%; /* needs width to invoke overflow ellipsis */
 	border: var(--radius) solid rgba(0,0,0,0.0); /* ends up matching background color */
 	background-color: rgba(255,255,255,0.5); /* for some higher contrast in case img background isnt friendly */
 	border-radius: 0 0 var(--radius) var(--radius);
@@ -94,8 +87,18 @@ means 16px uniform gutters everywhere
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+
+.img-container > .delete-btn {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: var(--radius);
+	/* border-radius: var(--radius); /* 0 var(--radius) 0 var(--radius); */
+
+	/* background-color: rgba(255,255,255,0.5); /* for some higher contrast in case img background isnt friendly */
+}
+
 img {
-	height: var(--img-size);
 	border-radius: var(--radius);
 }
 
@@ -117,3 +120,6 @@ img {
 	align-items: center;
 }
 
+button {
+	cursor: pointer;
+}

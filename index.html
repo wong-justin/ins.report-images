@@ -20,26 +20,29 @@
 			let {file, id} = msgFromElm
 			console.log(msgFromElm)
 
-		new Promise((resolve, reject) => {
-			let success = (compressResult) => {
-				// compressResult is an img Blob
-				let url = URL.createObjectURL(compressResult)
-				let result = { "id": id, "url": url }
-				app.ports.portJobToElm.send( result )
+			new Promise((resolve, reject) => {
+				let success = (compressResult) => {
+					// compressResult is an img Blob
+					let url = URL.createObjectURL(compressResult)
+					let result = { "id": id, "sucessful": true, "url": url }
+					app.ports.portJobToElm.send( result )
 
-				resolve()
-			}
-			let error = (e) => {
-				console.log(e)
-				reject()
-			}
-			new Compressor(file, {
-				quality: 0.6,
-				maxHeight: 1000,
-				success,
-				error,
+					resolve()
+				}
+				let error = (e) => {
+					reject(e)
+				}
+				new Compressor(file, {
+					quality: 0.6,
+					maxHeight: 1000,
+					success,
+					error,
+				})
 			})
-		})
+			.catch((e) => {
+				console.log("Compression error:", e)
+				app.ports.portJobToElm.send( { "id": id, "successful": false, "error": e })
+			})
 
 		})
 

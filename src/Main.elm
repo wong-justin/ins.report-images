@@ -7,7 +7,7 @@ import Browser
 import Dict exposing (Dict)
 import File exposing (File)
 import File.Select
-import Html exposing (Html, button, div, h2, img, input, p, text)
+import Html exposing (Html, button, div, figcaption, figure, h2, img, input, p, text)
 import Html.Attributes exposing (class, multiple, src, style, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as JD
@@ -109,6 +109,7 @@ type Msg
     | FileListChosen JD.Value
     | FileListReturned JD.Value
     | RemovePicture ImageID
+    | MakePDF
 
 
 
@@ -308,9 +309,15 @@ update msg model =
                 | images =
                     model.images
                         |> List.filter (\image -> image.id /= imgID)
-                        |> Debug.log "images"
               }
             , Cmd.none
+            )
+
+        MakePDF ->
+            ( model
+            , model.images
+                |> List.map (\image -> "img-" ++ String.fromInt image.id)
+                |> portImagesFromElm
             )
 
 
@@ -328,6 +335,9 @@ port portFilesFromElm : JD.Value -> Cmd msg
 
 
 port portFilesToElm : (JD.Value -> msg) -> Sub msg
+
+
+port portImagesFromElm : List String -> Cmd msg
 
 
 
@@ -375,6 +385,7 @@ view model =
         , viewThumbnails model.images
         , div [ class "btn" ]
             [ fileUploadBtn [ onFilesUploaded FileListChosen ] []
+            , button [ onClick MakePDF ] [ text "make pdf" ]
             ]
         ]
 
@@ -431,7 +442,7 @@ noneAttribute =
 
 viewThumbnail : Image -> Html Msg
 viewThumbnail image =
-    div [ class "img-container" ]
+    figure []
         [ img
             [ case image.status of
                 Loaded src_ ->
@@ -439,10 +450,12 @@ viewThumbnail image =
 
                 NotLoaded ->
                     noneAttribute
+            , Html.Attributes.id ("img-" ++ String.fromInt image.id)
             ]
             []
-        , p [] [ text image.description ]
-        , Html.map  -- whatever the final arg (node) produces, map it to something else instead
+        , figcaption [] [ text image.description ]
+        , Html.map
+            -- whatever the final arg (node) produces, map it to something else instead
             (\_ -> RemovePicture image.id)
             (button
                 [ class "delete-btn", onClick () ]

@@ -19,7 +19,6 @@
 		app.ports.portJobFromElm.subscribe( (msgFromElm) => {
 			// msgFromElm = {file: File, id: int}
 			let {file, id} = msgFromElm
-			console.log(msgFromElm)
 
 			new Promise((resolve, reject) => {
 				let success = (compressResult) => {
@@ -41,17 +40,19 @@
 				})
 			})
 			.catch((e) => {
-				console.log("Compression error:", e)
-				app.ports.portJobToElm.send( { "id": id, "successful": false, "error": e })
+				app.ports.portJobToElm.send( { "id": id, "successful": false, "error": file.name + ' failed to compress. ' + e })
 			})
 
 		})
 
 		app.ports.portImagesFromElm.subscribe( (msgFromElm) => {
-			makePDF()
+			// msgFromElm is ['id1', 'id2', ...], only the ids of images that are properly loaded
+			let ids = msgFromElm
+			makePDF(ids)
 		})
 
-		let makePDF = (imgsAndCoords) => {
+		let makePDF = (ids) => {
+
 			//   ┌────────────┐                   
 			//   │ 1     2    │                   
 			//   │            │                   
@@ -63,10 +64,10 @@
 			//   └────────────┘                   
                               
 			let imageCenters = [
-			  [165.5, 129.25], [444.5, 129.35],
-			  [165.5, 313.75], [444.5, 313.75],
-			  [165.5, 498.25], [444.5, 498.25],
-			  [165.5, 682.75], [444.5, 682.75]
+			  [165.5, 119.25], [444.5, 119.35],
+			  [165.5, 303.75], [444.5, 303.75],
+			  [165.5, 488.25], [444.5, 488.25],
+			  [165.5, 672.75], [444.5, 672.75]
 			]
 
 			let PAGE_WIDTH = 612
@@ -92,23 +93,19 @@
 			// doc.setFontStyle('bold')
 			doc.setFontSize(11)
 
-			let figures = document.querySelectorAll('figure')
-			for (let i = 0; i < figures.length; i++) {
-
-				// for each dimensions={x,y}
-				// fitToHeight(dimensions)
-				// then fitToWidth(dimensions)
-				// then calc offset
+			for (let i = 0; i < ids.length; i++) {
 
 				if (i % 8 == 0 && i > 0) {
 					doc.addPage({ format: [PAGE_WIDTH, PAGE_HEIGHT] })
 					// everything afterwards is implicity drawn on this new 'focused' page
 				}
 
+				let figure = document.querySelector('#' + ids[i])
 				let center = imageCenters[i % 8]
-				let img = figures[i].querySelector('img')
-				let description = figures[i].querySelector('figcaption').textContent
+				let img = figure.querySelector('img')
+				let description = figure.querySelector('figcaption').textContent
 
+				// fit to bounding box while maintaining aspect ratio
 				let dimensions = fitToHeight(img)
 				if (dimensions.width > MAX_IMAGE_WIDTH) {
 					dimensions = fitToWidth(dimensions)
@@ -121,8 +118,9 @@
 				}
 
 				let textStart = {
+					// sits on top of bounding box
 					x: center[0] - MAX_IMAGE_WIDTH / 2,
-					y: center[1] - (MAX_IMAGE_HEIGHT / 2) - 4 // roughly compensate for letters below baseline
+					y: center[1] - (MAX_IMAGE_HEIGHT / 2) - 3 // roughly compensate for letters below baseline
 				}
 
 				doc.text(description, textStart.x, textStart.y)
@@ -130,22 +128,24 @@
 			}
 
 			doc.save('test.pdf')
-			// some initial tests with 8 phone images:
-			// pdfill, @ typical "100 compress": 1.3KB
-			// jspdf + compressor @ 60% quality: 1.5KB
-			// jspdf + compressor @ 50% quality: 1.3KB
-			// jspdf + compressor @ 40% quality: 1.1KB
+			/* some initial tests with 8 phone images:
+			   - pdfill, @ typical "100 compress": 1.3KB
+			   - jspdf + compressor @ 60% quality: 1.5KB
+			   - jspdf + compressor @ 50% quality: 1.3KB
+			   - jspdf + compressor @ 40% quality: 1.1KB
+
+			   and with 35 phone images, a typical 4 point:
+			   -                           pdfill: 5.6KB, 9 secs processing time
+			   - jspdf + compressor @ 30% quality: 3.5KB, ~3 secs processing time async
+			*/
 		}
 		
-		// app.ports.portFilesFromElm.subscribe( (msgFromElm) => {
-		// 	// msgFromElm = FileList [ {path, ...} ]
-		// 	// note that object URLs should be revoked at some point to free memory
-		// 	// also note that there's a limit to how many object URLs can be made at once / how much memory can be used
-		// 	let fileList = msgFromElm
-		// 	console.log(fileList)
-		// 	let urls = [...fileList].map( (file) => ({"url": URL.createObjectURL(file)}) )
-		// 	app.ports.portFilesToElm.send(urls)
-		// })
+		document.querySelector('.gallery').ondragenter = (e) => {
+			console.log(e)
+		}
+		document.querySelector('.gallery').ondrop = (e) => {
+			console.log(e)
+		}
 	</script>
 </body>
 </html>

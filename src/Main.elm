@@ -1,15 +1,13 @@
 port module Main exposing (..)
 
--- import Html.Keyed as Keyed
--- import Html.Lazy exposing (lazy)
-
 import Browser
-import Dict exposing (Dict)
 import File exposing (File)
 import File.Select
-import Html exposing (Html, button, div, figcaption, figure, h2, img, input, p, text)
+import Html exposing (Html, button, div, figcaption, figure, h2, img, input, label, p, text)
 import Html.Attributes exposing (class, multiple, src, style, type_)
-import Html.Events exposing (on, onClick)
+import Html.Events exposing (on)
+import Html.Keyed as Keyed
+import Html.Lazy exposing (lazy)
 import Json.Decode as JD
 import Json.Decode.Pipeline as JP
 
@@ -110,6 +108,7 @@ type Msg
     | FileListReturned JD.Value
     | RemovePicture ImageID
     | MakePDF
+    | NoOp
 
 
 
@@ -309,6 +308,9 @@ update msg model =
                 | images =
                     model.images
                         |> List.filter (\image -> image.id /= imgID)
+                , jobs =
+                    model.jobs
+                        |> List.filter (\job -> job.id /= imgID)
               }
             , Cmd.none
             )
@@ -316,9 +318,13 @@ update msg model =
         MakePDF ->
             ( model
             , model.images
-                |> List.map (\image -> "img-" ++ String.fromInt image.id)
+                |> List.filter (\image -> image.status /= NotLoaded)
+                |> List.map (\image -> stringifyImageID image.id)
                 |> portImagesFromElm
             )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 
@@ -372,6 +378,12 @@ maybeStartJobs jobs =
             ( jobs, Cmd.none )
 
 
+stringifyImageID : ImageID -> String
+stringifyImageID imgID =
+    -- internal ID to html-safe id, where ids can't start with a number
+    "fig" ++ String.fromInt imgID
+
+
 
 -- VIEW
 
@@ -382,10 +394,20 @@ view model =
         [ class "gallery-container"
         ]
         [ h2 [] [ text "gallery" ]
-        , viewThumbnails model.images
-        , div [ class "btn" ]
-            [ fileUploadBtn [ onFilesUploaded FileListChosen ] []
-            , button [ onClick MakePDF ] [ text "make pdf" ]
+        , Keyed.node "div"
+            [ class "gallery"
+            , onDragOver NoOp
+            , onDragDrop (\rawJson -> FileListChosen rawJson)
+            ]
+            (List.map viewKeyedThumbnail model.images)
+        , div
+            [ class "btn" ]
+            [ fileUploadBtn
+                [ onFilesUploaded (\rawJson -> FileListChosen rawJson) ]
+                []
+            , button
+                [ onClick (\_ -> MakePDF) ]
+                [ text "make pdf" ]
             ]
         ]
 
@@ -394,45 +416,82 @@ view model =
 -- probably need to manually have a hidden <input type=file multiple> so i can have a custom handler that keeps the native JS File obj around, for the sake of blob urls or whatever
 -- e.target.files = FileList
 -- e.target.files[0] = {lastModified=1690..., lastModifiedDate=Date, name="filename", path="some/path/filenname", size=12345..., type="mime/something"}
+--
+-- EDIT: elm cant trigger click event on hidden file input :(
+
+
+onDragOver : Msg -> Html.Attribute Msg
+onDragOver msg =
+    -- must prevent default ondragover in order to let ondrop event bubble through
+    Html.Events.preventDefaultOn "dragover"
+        (JD.map
+            (\_ -> ( msg, True ))
+            (JD.succeed ())
+        )
+
+
+onDragDrop : (JD.Value -> Msg) -> Html.Attribute Msg
+onDragDrop produceMsgWith =
+    on "drop"
+        (JD.map
+            (\jsonValue -> produceMsgWith jsonValue)
+            (JD.at [ "dataTransfer", "files" ] JD.value)
+        )
 
 
 onFilesUploaded : (JD.Value -> Msg) -> Html.Attribute Msg
-onFilesUploaded callbackMsg =
-    -- an attribute, like onClick
-    -- param is a message that holds a generic JD.Value type so it can be sent over port
+onFilesUploaded produceMsgWith =
+    -- this is an attribute used like onClick
     -- eg. onFilesUploaded MyMsg, where MyMsg is defined as MyMsg Json.Value
     -- the Json.Value is a FileList in javascript
     --
     -- note how json.map works:
     -- json.map : (a -> val) -> Decoder a -> Decoder val
-    -- so it expects a function that returns a val, and returns a deocder that returns that val, and there's a middle type in common
-    on "change" (JD.map callbackMsg (JD.at [ "target", "files" ] JD.value))
+    --   so the second param is a decoder that returns some type `a`,
+    --   the first param is a function that takes `a` and returns something else,
+    --   and the return value is a decoder that returns the something else
+    on "change"
+        (JD.map
+            (\jsonValue -> produceMsgWith jsonValue)
+            (JD.at [ "target", "files" ] JD.value)
+        )
+
+
+onClick : (() -> Msg) -> Html.Attribute Msg
+onClick produceMsg =
+    -- trying to make arg a lambda so that it's more intuitive to use
+    -- onClick (\_ -> MyMsg with any kind of data)
+    -- onFileUpload (\files -> MyMsg files)
+    --
+    -- as opposed to default onClick
+    -- onClick (MyMsg some data too)
+    on "click"
+        (JD.map
+            produceMsg
+            (JD.succeed ())
+        )
 
 
 fileUploadBtn : List (Html.Attribute Msg) -> List (Html Msg) -> Html Msg
 fileUploadBtn attributes children =
     div [ class "btn" ]
-        [ input
-            ([ type_ "file", multiple True ] ++ attributes)
-            children
+        -- [ button
+        --     [ Html.Attributes.attribute "onclick" "javascript:this.nextElementSibling.click()"
+        --     ]
+        --     [ text "file upload on me" ]
+        [ label
+            ([ class "btn" ] ++ attributes)
+            ([ text "drag and drop or click to upload files"
+             , input
+                [ type_ "file"
+                , multiple True
+                , style "display" "none"
+                ]
+                []
+             ]
+                ++ children
+            )
         ]
-
-
-viewThumbnails : List Image -> Html Msg
-viewThumbnails images =
-    -- start with images,
-    -- then images become last argument to list.map, resulting in list of thumbnailViews,
-    -- then list of thumbnailViews become last argument (aka children) to div []
-    images
-        |> List.map (\image -> viewThumbnail image)
-        -- images
-        |> div
-            [ class "gallery" -- single-row"
-            ]
-
-
-
--- [ thumbnails ]
 
 
 noneAttribute : Html.Attribute msg
@@ -440,9 +499,14 @@ noneAttribute =
     Html.Attributes.classList []
 
 
+viewKeyedThumbnail : Image -> ( String, Html Msg )
+viewKeyedThumbnail image =
+    ( String.fromInt image.id, viewThumbnail image )
+
+
 viewThumbnail : Image -> Html Msg
 viewThumbnail image =
-    figure []
+    figure [ Html.Attributes.id (stringifyImageID image.id) ]
         [ img
             [ case image.status of
                 Loaded src_ ->
@@ -450,15 +514,14 @@ viewThumbnail image =
 
                 NotLoaded ->
                     noneAttribute
-            , Html.Attributes.id ("img-" ++ String.fromInt image.id)
             ]
             []
-        , figcaption [] [ text image.description ]
-        , Html.map
-            -- whatever the final arg (node) produces, map it to something else instead
-            (\_ -> RemovePicture image.id)
-            (button
-                [ class "delete-btn", onClick () ]
-                [ text "X" ]
-            )
+        , figcaption
+            []
+            [ text image.description ]
+        , button
+            [ class "delete-btn"
+            , onClick (\_ -> RemovePicture image.id)
+            ]
+            [ text "X" ]
         ]

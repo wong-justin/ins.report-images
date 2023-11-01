@@ -28,14 +28,14 @@ https://every-layout.dev/layouts/sidebar/
 }
 
 /*
-consider responsive grid effect like here:
+responsive grid effect shown here:
 https://every-layout.dev/demos/grid-cards/
 
 .grid {
     grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
 }
 
-apparently it's a famous / the most useful css snippet for css grid
+apparently it's the most useful / famous css snippet for css grid
 
 responsive from 1 to inifinite cols, with row wrap too
 

@@ -101,69 +101,17 @@ init _ =
 
 type Msg
     = Noop
-      -- | OpenImagePicker
-      -- | ImagesUploaded File (List File) -- weird return type from elm people: first file, and other files if they exist (instead of just a list in the first place)
     | JobFinished JD.Value -- { id : ImageID, successful : Bool, url : ImageURL }
-    | FileListChosen JD.Value
-    | FileListReturned JD.Value
+    | FileListChosen JD.Value -- [ File(JS Obj) ]
     | RemovePicture ImageID
     | MakePDF
     | NoOp
-
-
-
--- | CancelJob JobID -- remove job from linked list if job is still pending (ie. exists)
--- | DeleteImage ImageID -- remove image with this id from list model.images
--- | ToElmFinishJob CompressResults -- show finished image element, and start next job
--- side effects used in update:
--- * startJob (over a port)
--- * filepicker dialog
--- RequestCompressImages
---| OtherMsgType
---| ReceiveUploadedImages
---| RequestCreateImagePlaceholders --make the whole bunch at one speed
--- each picture will send CompressMsg StartCompress, and on its FinishCompress should tell next picture to start compressing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Noop ->
-            ( model, Cmd.none )
-
-        --  OpenImagePicker ->
-        --      ( model, File.Select.files [ "image/*" ] ImagesUploaded )
-        -- -- TODO: use ports to get Blob urls from Files, since elm hides the useful aspects of web/js Blob and File objects that i need, aka URL.createObjectURL(blob/file)
-        -- ImagesUploaded file remainingFiles ->
-        --     let
-        --         newImages =
-        --             uniteUploads file remainingFiles
-        --                 |> List.map imageFromFile
-        --         maybeStartJobs : List Job -> ( List Job, Cmd Msg )
-        --         maybeStartJobs jobs =
-        --             case jobs of
-        --                 -- there's at least one existing job and none are started because first isnt started
-        --                 -- so update it and start the side effect
-        --                 ( jobID, NotStarted ) :: remaining ->
-        --                     ( ( jobID, Started ) :: remaining
-        --                     , portJobFromElm jobID
-        --                     )
-        --                 -- else there are already pending jobs, so do nothing
-        --                 _ ->
-        --                     ( jobs, Cmd.none )
-        --         ( updatedJobs, cmd ) =
-        --             newImages
-        --                 |> List.map (\image -> ( image.id, NotStarted ))
-        --                 |> List.append model.jobs
-        --                 |> maybeStartJobs
-        --     in
-        --     ( { model
-        --         | images = model.images ++ newImages
-        --         , jobs = updatedJobs
-        --       }
-        --     , cmd
-        --     )
-        FileListReturned fileListJson ->
             ( model, Cmd.none )
 
         FileListChosen fileListJson ->
@@ -354,7 +302,6 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ portJobToElm JobFinished
-        , portFilesToElm FileListReturned
         ]
 
 
@@ -401,14 +348,14 @@ view model =
             ]
             (List.map viewKeyedThumbnail model.images)
         , div
-            [ class "btn" ]
+            []
             [ fileUploadBtn
                 [ onFilesUploaded (\rawJson -> FileListChosen rawJson) ]
                 []
-            , button
-                [ onClick (\_ -> MakePDF) ]
-                [ text "make pdf" ]
             ]
+        , button
+            [ onClick (\_ -> MakePDF) ]
+            [ text "make pdf" ]
         ]
 
 

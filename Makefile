@@ -2,23 +2,23 @@
 #   make livereload PORT=<port>
 
 # # elm make goes to stderr, which is good since stdout will be hidden later (see below)
-build: index.html lib/app.js
+build: public/index.html public/lib/app.js
 # build: page.html style.css
 
-lib/app.js: src/*.elm lib/
+public/lib/app.js: src/*.elm public/lib/
 	# elm-format --yes src/
-	elm make src/Main.elm --output=lib/app.js
+	elm make src/Main.elm --output=public/lib/app.js
 
-lib/: lib/jspdf.js lib/compressor.js
+public/lib/: public/lib/jspdf.js public/lib/compressor.js
 
-lib/jspdf.js:
-	mkdir -p lib/
-	curl 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.0.0/jspdf.es.min.js' -o lib/jspdf.js
+public/lib/jspdf.js:
+	mkdir -p public/lib/
+	curl 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.0.0/jspdf.es.min.js' -o public/lib/jspdf.js
 	# 2.0.0 is the latest release i could find that didnt give (babel) error after vanilla js esm import
 
-lib/compressor.js:
-	mkdir -p lib/
-	curl 'https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.esm.min.js' -o lib/compressor.js
+public/lib/compressor.js:
+	mkdir -p public/lib/
+	curl 'https://cdnjs.cloudflare.com/ajax/libs/compressorjs/1.2.1/compressor.esm.min.js' -o public/lib/compressor.js
 
 # Note that python logs are hidden.
 # Also note that inner 'make' within this makefile also has stdout hidden,

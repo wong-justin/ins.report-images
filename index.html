@@ -103,7 +103,7 @@
 				let figure = document.querySelector('#' + ids[i])
 				let center = imageCenters[i % 8]
 				let img = figure.querySelector('img')
-				let description = figure.querySelector('figcaption').textContent
+				let description = ''  // when ready: figure.querySelector('figcaption').textContent
 
 				// fit to bounding box while maintaining aspect ratio
 				let dimensions = fitToHeight(img)

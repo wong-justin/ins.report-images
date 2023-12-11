@@ -84,10 +84,7 @@ type alias JobResultWithID =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { images =
-            [ { status = Loaded "../assets/400x128.jpg", description = "lorem ipsum lorem ipsum", id = 0 }
-            , { status = Loaded "../assets/128x128.jpg", description = "lorem ipsum lorem ipsum", id = 1 }
-            , { status = Loaded "../assets/128x400.jpg", description = "lorem ipsum lorem ipsum", id = 2 }
-            , { status = NotLoaded, description = "hasn't been loaded yet", id = 3 }
+            [ { status = NotLoaded, description = "hasn't been loaded yet", id = 0 }
             ]
       , jobs = []
       }
